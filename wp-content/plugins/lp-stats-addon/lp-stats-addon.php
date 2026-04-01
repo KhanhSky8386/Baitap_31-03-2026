@@ -133,3 +133,91 @@ if ( ! function_exists( 'lp_stats_get_stats' ) ) {
     add_action( 'admin_head', 'lp_stats_enqueue_admin_styles' );
     add_shortcode( 'lp_stats_dashboard', 'lp_stats_shortcode' );
 }
+
+// ===============================
+// NOTIFICATION BAR
+// ===============================
+function lp_custom_notification_bar() {
+
+    if (!function_exists('learn_press_is_course')) return;
+
+    if (learn_press_is_course()) {
+
+        echo '<div class="lp-notification-bar">';
+
+        if (is_user_logged_in()) {
+            $user = wp_get_current_user();
+            echo 'Chào ' . esc_html($user->display_name) . ', bạn đã sẵn sàng bắt đầu bài học hôm nay chưa?';
+        } else {
+            echo 'Đăng nhập để lưu tiến độ học tập!';
+        }
+
+        echo '</div>';
+    }
+}
+
+add_action('wp_body_open', 'lp_custom_notification_bar');
+
+
+// ===============================
+// CUSTOM CSS
+// ===============================
+add_action('wp_head', function() {
+    echo '<style>
+    .lp-notification-bar {
+        background: #ff6600;
+        color: #fff;
+        padding: 12px;
+        text-align: center;
+        font-weight: bold;
+        position: sticky;
+        top: 0;
+        z-index: 9999;
+    }
+
+    .learn-press .lp-button,
+    .learn-press button {
+        background: green !important;
+        color: #fff !important;
+    }
+    </style>';
+});
+
+
+// ===============================
+// SHORTCODE
+// ===============================
+add_shortcode('lp_course_info', function($atts){
+
+    $atts = shortcode_atts([
+        'id' => ''
+    ], $atts);
+
+    if (!$atts['id']) return 'Thiếu ID khóa học';
+
+    $course = learn_press_get_course($atts['id']);
+    if (!$course) return 'Không tìm thấy khóa học';
+
+    $lessons = $course->count_items('lp_lesson');
+    $duration = get_post_meta($atts['id'], '_lp_duration', true);
+
+    $status = 'Chưa đăng ký';
+
+    if (is_user_logged_in()) {
+        $user = learn_press_get_current_user();
+        if ($user->has_enrolled_course($atts['id'])) {
+            $status = 'Đã đăng ký';
+        }
+        if ($user->has_finished_course($atts['id'])) {
+            $status = 'Đã hoàn thành';
+        }
+    }
+
+    return "
+        <div>
+            <p><b>Số bài học:</b> $lessons</p>
+            <p><b>Thời gian:</b> $duration</p>
+            <p><b>Trạng thái:</b> $status</p>
+        </div>
+    ";
+});
